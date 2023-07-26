@@ -11,12 +11,12 @@ class lakeshore350(object):
                                       parity=Parity.odd,
                                       stop_bits=StopBits.one
                                       )
-
-        self.inst.write_termination = self.inst.LF
+#returns subclass of resource - specific instrument or command ?
+        self.inst.write_termination = self.inst.LF #\n
         self.inst.read_termination = self.inst.LF
     
-    def __del__(self):
-        self.inst.close()
+    #def __del__(self):
+    #    self.inst.close()
     
     def close(self):
         self.inst.close()
@@ -39,7 +39,7 @@ class lakeshore350(object):
         Temp = self.inst.query("KRDG? "+ N )
         
         
-
+        #replace the substrings \n and \r with nothing
         Temp=re.sub(r"\n","",Temp)
         Temp=re.sub(r"\r","",Temp)#.replace doesnt work!!!
         
@@ -55,7 +55,7 @@ class lakeshore350(object):
         A tuple of all the read temperatures
 
         """
-        String_Temps=self.inst.query("KRDG? 0")
+        String_Temps=self.inst.query("KRDG? 0") #why 0 not A or B ?
         print(String_Temps)
         String_Temps.replace("\n","")
         String_Temps.replace("\r","")
