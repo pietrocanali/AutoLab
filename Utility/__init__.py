@@ -25,3 +25,9 @@ from .LockinUtil_SRS import*
 
 from .Green_CryoTemp_Con import*
 from .Monitor_Window import*
+
+from .Motor_Con import *
+from .MotorMon_Window import *
+
+from .New_CryoTemp_Con import*
+from .Monitor335_Window import*
