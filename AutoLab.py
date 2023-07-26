@@ -51,6 +51,8 @@ import Utility
 
 import Workers
 
+from prompt_toolkit import prompt
+
 #Main class and window
 
 class Window(tk.Frame):
@@ -84,10 +86,10 @@ class Window(tk.Frame):
         
         # Find either Setup.txt or SetupExample.txt
         if os.path.isfile(os.getcwd()+"\\Setup.txt"):
-            setupFilename = "Setup.txt"
+            setupFilename = "SetUp.txt"
         else:
             print("\n\n    WARNING: Defaulting to the example setup file!   \n\n")
-            setupFilename = "SetupExample.txt"
+            setupFilename = "SetUpExample.txt"
         
         #######  menu frame   #############
         
@@ -104,7 +106,7 @@ class Window(tk.Frame):
         #self.UtilFrame['bg'] = "purple"
         
         #Create untility tabs
-        self.UtilTabs = ttk.Notebook(self.UtilFrame,height = 100,width = 595)
+        self.UtilTabs = ttk.Notebook(self.UtilFrame,height = 100,width = 650)
         self.UtilTabs.pack(side="bottom")
         self.utilTabModules = {}
         
@@ -116,7 +118,7 @@ class Window(tk.Frame):
         self.GraphUtilTab = Utility.GraphUtil.Util(self.UtilTabs)
         self.utilTabModules[self.GraphUtilTab.name] = self.GraphUtilTab
         #self.CreateGraphUtilTab()
-        
+
         self.SetupUtilTabs(setupFilename)
         
         ############## File frame ##################
@@ -239,7 +241,6 @@ class Window(tk.Frame):
         #self.UtilLabel.pack(side="top")
         
 
-        
         self.UpdateWindow()
     
     ############################################
@@ -312,41 +313,107 @@ class Window(tk.Frame):
     
     def SetupUtilTabs(self,SetupFile):
         
-        print("Loading Utilities")
+        #print("Loading Utilities")
         rm=pyvisa.ResourceManager()
         self.address_list=rm.list_resources()
         rm.close()#Create a list of Valid GPIB/COMS ports. Useful for passing to workers/utils
         
         file = open(SetupFile,"r")
         
-        instSection = False
+        print('Available Devices: lakeshore350,lakeshore335,Mcallister')
+        text = prompt('Devices to connect: ')
+        #print('ok')
+        text = text.replace(' ', '')
+        text = text.split(',')
+            
+        #print(text)
+       
+        dev_apx = []
+        utils = []
+        tabs=[]
+        
+        devSection = False
+        instSection= False
         
         for line in file:
-            
-            #Check if we have entered the instrument section of the setup file
-            if line.startswith("#"):
-                if line.startswith("#Utilities"):
+            if line.startswith('#'):
+                if line.startswith('#Devices'):
+                    devSection = True
+                    instSection = False
+                elif line.startswith("#Utilities"):
+                    devSection = False
                     instSection = True
                 else:
+                    devSection = False
                     instSection = False
             
-            
-            # If in the instrument section of setup file try to load each instrument
-            elif instSection:
-                #try to find instrument in Instruments module
-                #Load that instrument with given channel and name
-                try:
-                    tabStr = line.replace("\n","") # remove end of charactor
-                    print(tabStr)
-                    utilTabModule = getattr(Utility, tabStr)
-                    
-                    utilTabInst = utilTabModule.Util(self.UtilTabs,parent=self)
-                    
-                    self.utilTabModules[utilTabInst.name] = utilTabInst
-                     
-                except Exception as e:
-                    print(e)
+            elif devSection:
+                tabstr = line.replace('\n', '')
+                #tabstr = tabstr.replace('/n','')
+                tabs.append(tabstr)
                 
+            elif instSection:
+                tabStr = line.replace("\n","") # remove end of charactor
+                    
+                utils.append(tabStr)
+
+                
+        for i in range(len(tabs)):
+            for j in range(len(text)):
+                if tabs[i] == text[j]:
+                    dev_apx.append(i)
+                else:
+                    None
+        #print(tabs, dev_apx)
+       # print('Connecting to: '+devices)
+    
+        print("Loading Utilities")
+        
+        loadutils= []
+                    
+        for i in range(len(utils)):
+            for j in dev_apx:
+                if i == j:
+                    loadutils.append(utils[i])
+        
+        for i in range(len(loadutils)):
+            try:
+                print(loadutils[i])
+                utilTabModule = getattr(Utility, loadutils[i])
+                    
+                utilTabInst = utilTabModule.Util(self.UtilTabs,parent=self)
+                    
+                self.utilTabModules[utilTabInst.name] = utilTabInst
+                     
+            except Exception as e:
+                print(e)
+                
+        
+#        for line in file:
+ #           
+  #          #Check if we have entered the instrument section of the setup file
+   #         if line.startswith("#"):
+    #            if line.startswith("#Utilities"):
+     #               instSection = True
+      #          else:
+       #             instSection = False
+        #    
+         #   
+          #  # If in the instrument section of setup file try to load each instrument
+           # elif instSection:
+            #    #try to find instrument in Instruments module
+             #   #Load that instrument with given channel and name
+              #  try:
+               #     tabStr = line.replace("\n","") # remove end of charactor
+                #    print(tabStr)
+                 #   utilTabModule = getattr(Utility, tabStr)
+                  #  
+                   # utilTabInst = utilTabModule.Util(self.UtilTabs,parent=self)
+                    #
+      #              self.utilTabModules[utilTabInst.name] = utilTabInst
+       #              
+        #        except Exception as e:
+         #           print(e)
         
         file.close()
     
@@ -380,7 +447,10 @@ class Window(tk.Frame):
                     self.Resources.LoadInst(line)
                     
                 except Exception as e:
+                    new_line = line.replace('\n','')
+                    print('Could not load instrument {}'.format(new_line))
                     print(e)
+                    print()
                 
                 
         file.close()
@@ -802,17 +872,16 @@ class ResourcesObj(object):
         """
         Load Instrument
         """
-        
         try:
             line = line.replace("\n","")
             splt = line.split(",")
             InstClass = getattr(Instruments,splt[0])
-            
             #Every instrument class should take a ResourceManager object and a channel name
             Inst = InstClass(self.rm, int(splt[1]) )
-            
-            self.AddInst(Inst,splt[2])
-            print("Succesfully connected to "+splt[2])
+            print('done Inst')
+
+            self.AddInst(Inst,splt[0])
+            print("Succesfully connected to "+splt[0])
             
         except Exception as e:
             raise e
@@ -829,7 +898,7 @@ class ResourcesObj(object):
         while( len(self.insts)>0 ):
             Name, inst = self.insts.popitem()
             try:
-                inst.__del__()
+                inst.close()
             except:
                 print("Failed to close {}".format(Name))
 
